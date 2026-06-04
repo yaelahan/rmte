@@ -42,18 +42,20 @@ async function connect() {
     if(ws){try{ws.close();}catch(e){}}
     try {
         const enc=new TextEncoder();
-        aesKey=await crypto.subtle.importKey('raw',await crypto.subtle.digest('SHA-256',enc.encode(password)),{name:'AES-GCM'},false,['encrypt','decrypt']);
-        const authToken=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode('rmte-auth:'+password)))).map(b=>b.toString(16).padStart(2,'0')).join('');
+        const keyHash=await rmteCrypto.sha256(enc.encode(password));
+        aesKey=await rmteCrypto.importKey(keyHash);
+        const authHash=await rmteCrypto.sha256(enc.encode('rmte-auth:'+password));
+        const authToken=Array.from(authHash).map(b=>b.toString(16).padStart(2,'0')).join('');
         ws=new WebSocket(server); ws.binaryType='arraybuffer';
         ws.onopen=()=>{_log.info('WS connected');sendRaw(JSON.stringify({type:'auth',role:'viewer',session_id:sessionId,viewer_id:myViewerId,viewer_name:myUsername,auth_token:authToken,protocol_version:'0.2'}));};
         ws.onclose=e=>{_log.warn('WS closed',{code:e.code});const s=document.getElementById('sb-connection');if(s){s.innerText='● Disconnected';s.style.color='#f85149';}};
-        ws.onerror=()=>{_log.err('WS error');showError('Connection failed');btn.innerText='Connect';btn.disabled=false;};
+        ws.onerror=()=>{_log.err('WS error');showError('Connection failed');btn.innerText='Establish Connection';btn.disabled=false;};
         ws.onmessage=async e=>{try{typeof e.data==='string'?await onJson(JSON.parse(e.data)):await onBinary(new Uint8Array(e.data));}catch(err){_log.err('msg handler',err);}};
-    } catch(e){_log.err('connect',e);showError(e.message);btn.innerText='Connect';btn.disabled=false;}
+    } catch(e){_log.err('connect',e);showError(e.message);btn.innerText='Establish Connection';btn.disabled=false;}
 }
 function sendRaw(d){if(ws&&ws.readyState===1)ws.send(d);else _log.err('WS not open');}
 function sendJson(m){_log.out('json:'+m.action,m);sendRaw(JSON.stringify(m));}
-async function sendBin(tabId,plain){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},aesKey,plain);const p=new Uint8Array(1+12+ct.byteLength);p[0]=tabId;p.set(iv,1);p.set(new Uint8Array(ct),13);sendRaw(p);}
+async function sendBin(tabId,plain){const iv=rmteCrypto.randomBytes(12);const ct=await rmteCrypto.encrypt(iv,aesKey,plain);const p=new Uint8Array(1+12+ct.byteLength);p[0]=tabId;p.set(iv,1);p.set(ct,13);sendRaw(p);}
 
 // ===== MESSAGE HANDLERS =====
 async function onJson(msg) {
@@ -93,7 +95,7 @@ async function onBinary(raw) {
     const tabId=raw[0],iv=raw.slice(1,13),ct=raw.slice(13);
     if(ct.length===0){_log.warn('Empty ct',{tabId});return;}
     try {
-        const dec=await crypto.subtle.decrypt({name:'AES-GCM',iv},aesKey,ct);
+        const dec=await rmteCrypto.decrypt(iv,aesKey,ct);
         if(tabId===DATA_CH){
             if(waitingForFileData){waitingForFileData=false;const txt=new TextDecoder().decode(dec);_log.info('File received',{bytes:dec.byteLength});openEditorTab(pendingEditorPath,txt);}
             else _log.warn('Tab255 data but not waiting');
@@ -370,7 +372,19 @@ function hideError(){document.getElementById('setup-error').style.display='none'
 
 window.addEventListener('resize',refitActive);
 window.addEventListener('DOMContentLoaded',()=>{
-    ['server','sessionId','password','username'].forEach(k=>{const v=sessionStorage.getItem('rmte_'+k);if(v)document.getElementById(k).value=v;});
+    // URL params take priority (sharable link: ?server=...&session=...)
+    const params=new URLSearchParams(window.location.search);
+    const paramServer=params.get('server');
+    const paramSession=params.get('session');
+    if(paramServer)document.getElementById('server').value=paramServer;
+    if(paramSession)document.getElementById('sessionId').value=paramSession;
+    // Then fill remaining from sessionStorage (won't overwrite URL params)
+    ['server','sessionId','password','username'].forEach(k=>{
+        const el=document.getElementById(k);
+        if(!el.value){const v=sessionStorage.getItem('rmte_'+k);if(v)el.value=v;}
+    });
+    // Focus password field if server+session already filled
+    if(document.getElementById('server').value&&document.getElementById('sessionId').value&&!document.getElementById('password').value){document.getElementById('password').focus();}
     if(sessionStorage.getItem('rmte_autoconnect')==='true')connect();
     document.addEventListener('keydown',e=>{
         if((e.ctrlKey||e.metaKey)&&e.key==='s'){

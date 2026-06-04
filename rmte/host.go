@@ -134,8 +134,11 @@ func runHost(serverURL, password string, bufferMB int) {
 	}
 
 	fmt.Printf("Session ID: %s\n", authResp.SessionID)
-	fmt.Printf("Share this ID with viewers to join.\n")
 	fmt.Printf("Buffer limit: %d MB\n", bufferMB)
+	
+	// Generate sharable link
+	webURL := buildShareLink(serverURL, authResp.SessionID)
+	fmt.Printf("\nShareable link (password still required):\n  %s\n\n", webURL)
 
 	// Create initial tab (ID 0)
 	createTab(0, conn)
@@ -916,4 +919,32 @@ func handleDeleteFile(reqPath, targetConn string, conn *SafeConn) {
 		"type": "control", "action": "file_deleted",
 		"target_conn": targetConn, "path": filepath.ToSlash(absPath),
 	})
+}
+
+// buildShareLink converts a WebSocket server URL to a browser-accessible sharable link.
+// e.g. ws://localhost:8080/ws → http://localhost:8080/?server=ws://localhost:8080/ws&session=abc123
+func buildShareLink(serverURL, sessionID string) string {
+	parsed, err := url.Parse(serverURL)
+	if err != nil {
+		return fmt.Sprintf("(could not generate link: %v)", err)
+	}
+
+	// Determine HTTP scheme from WS scheme
+	var scheme string
+	switch parsed.Scheme {
+	case "wss":
+		scheme = "https"
+	default:
+		scheme = "http"
+	}
+
+	// Build the web UI base URL (same host, root path)
+	baseURL := fmt.Sprintf("%s://%s/", scheme, parsed.Host)
+
+	// Encode query params
+	params := url.Values{}
+	params.Set("server", serverURL)
+	params.Set("session", sessionID)
+
+	return baseURL + "?" + params.Encode()
 }

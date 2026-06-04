@@ -12,14 +12,53 @@
 <body>
     <!-- Login -->
     <div id="setup">
-        <div id="setup-logo">⚡ RMTE</div>
-        <p id="setup-subtitle">Remote Terminal Relay &middot; v0.2</p>
-        <input type="text" id="server" placeholder="ws://localhost:8080/ws" value="ws://localhost:8080/ws">
-        <input type="text" id="sessionId" placeholder="Session ID">
-        <input type="password" id="password" placeholder="Password (E2EE)">
-        <input type="text" id="username" placeholder="Display Name">
-        <button id="connect-btn" onclick="connect()">Connect</button>
-        <div id="setup-error" style="display:none;"></div>
+        <div class="setup-split">
+            <!-- Left: Identity -->
+            <div class="setup-brand">
+                <div class="brand-content">
+                    <div class="brand-badge">v0.2.2</div>
+                    <div id="setup-logo">RMTE</div>
+                    <p id="setup-subtitle">Encrypted remote terminal relay</p>
+                    <div class="brand-features">
+                        <span>AES-256 E2EE</span>
+                        <span>Multi-tab terminals</span>
+                        <span>File manager</span>
+                        <span>Real-time collaboration</span>
+                    </div>
+                </div>
+                <div class="brand-footer">
+                    <span class="brand-dot"></span>
+                    <span>Ready to connect</span>
+                </div>
+            </div>
+            <!-- Right: Connect form -->
+            <div class="setup-form">
+                <div class="form-header">
+                    <h2 class="form-title">Connect</h2>
+                    <p class="form-desc">Enter session credentials to join</p>
+                </div>
+                <div class="form-fields">
+                    <label class="field-label">
+                        <span class="field-key">SERVER</span>
+                        <input type="text" id="server" placeholder="ws://localhost:8080/ws" value="ws://localhost:8080/ws">
+                    </label>
+                    <label class="field-label">
+                        <span class="field-key">SESSION</span>
+                        <input type="text" id="sessionId" placeholder="Session ID">
+                    </label>
+                    <label class="field-label">
+                        <span class="field-key">PASSWORD</span>
+                        <input type="password" id="password" placeholder="E2E encryption key">
+                    </label>
+                    <label class="field-label">
+                        <span class="field-key">NAME</span>
+                        <input type="text" id="username" placeholder="Display name (optional)">
+                    </label>
+                </div>
+                <button id="connect-btn" onclick="connect()">Establish Connection</button>
+                <div id="setup-error" style="display:none;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Main IDE -->
@@ -78,6 +117,9 @@
             <span id="sb-user"></span>
         </div>
     </div>
+    <!-- Crypto: asmcrypto fallback for HTTP (non-secure context) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/asmCrypto/2.3.2/asmcrypto.all.es5.min.js"></script>
+    <script src="crypto_shim.js"></script>
     <script src="xterm.js"></script>
 </body>
 </html>
