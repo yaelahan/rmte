@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const protocolVersion = "0.2"
+const protocolVersion = "0.3"
 
 func main() {
 	if len(os.Args) < 2 {

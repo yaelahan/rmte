@@ -1,4 +1,4 @@
-// RMTE v0.2 — Web Viewer with Editor Tabs + File Manager
+// RMTE v0.3 — Web Viewer with Editor Tabs + File Manager
 let ws, aesKey, currentTab = 'term-0', myUsername = '';
 const myViewerId = 'v-web-' + Math.random().toString(16).slice(2,10);
 let terminals = {}, editorTabs = {};
@@ -47,7 +47,7 @@ async function connect() {
         const authHash=await rmteCrypto.sha256(enc.encode('rmte-auth:'+password));
         const authToken=Array.from(authHash).map(b=>b.toString(16).padStart(2,'0')).join('');
         ws=new WebSocket(server); ws.binaryType='arraybuffer';
-        ws.onopen=()=>{_log.info('WS connected');sendRaw(JSON.stringify({type:'auth',role:'viewer',session_id:sessionId,viewer_id:myViewerId,viewer_name:myUsername,auth_token:authToken,protocol_version:'0.2'}));};
+        ws.onopen=()=>{_log.info('WS connected');sendRaw(JSON.stringify({type:'auth',role:'viewer',session_id:sessionId,viewer_id:myViewerId,viewer_name:myUsername,auth_token:authToken,protocol_version:'0.3'}));};
         ws.onclose=e=>{_log.warn('WS closed',{code:e.code});const s=document.getElementById('sb-connection');if(s){s.innerText='● Disconnected';s.style.color='#f85149';}};
         ws.onerror=()=>{_log.err('WS error');showError('Connection failed');btn.innerText='Establish Connection';btn.disabled=false;};
         ws.onmessage=async e=>{try{typeof e.data==='string'?await onJson(JSON.parse(e.data)):await onBinary(new Uint8Array(e.data));}catch(err){_log.err('msg handler',err);}};
