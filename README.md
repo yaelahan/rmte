@@ -21,6 +21,9 @@ It allows hosts to share terminal sessions, navigate directories using a clean a
   * **Parent Navigation (`..`)**: An always-visible `..` folder item at the top of the file list allows walking backward up the host's directory structure.
   * **Inline Operations (Zero Browser Modals)**: Native prompt dialogs (`prompt()`, `confirm()`, `alert()`) are deprecated. Creating new files (`+📄`) or folders (`+📁`), renaming (`✏️`), and deleting (`🗑`) are performed via inline text inputs and non-intrusive confirmation strips (`[Yes] [No]`).
   * **Toast Notification HUD**: Directory and workspace errors (e.g. permission issues or buffer exceeded warnings) are reported through transient, auto-dismissing inline Toasts.
+* **Shareable Links & Auto-fill UI:** Running a host session generates a web URL with pre-filled `?server=` and `?session=` parameters. The Web UI parses these and auto-focuses the password input for seamless onboarding.
+* **Modern Web Redesign:** A sleek, split-viewport interface using OKLCH atmospheric themes, Space Grotesk/Inter/JetBrains Mono typography, and portable CSS design tokens (`tokens.css`).
+* **HTTP Crypto Polyfill:** Automatically detects WebCrypto API availability and falls back to `asmcrypto.js` for AES-GCM and SHA-256 operations, ensuring E2EE works flawlessly even over non-localhost HTTP connections.
 * **Dynamic Max Buffer Limits:** Set customizable memory limits via CLI (e.g. `--buffer=5` for 5MB limits) to configure both the terminal ring buffer and the maximum allowed file sizes.
 * **Zero-copy Binary Data Channel (Tab ID `255`):** Avoids heavy Base64 parsing overhead. Files are sent as pure, encrypted binary frames over a reserved channel.
 * **Integrated Chat Room:** A memory-cached chat bridge connecting Web and CLI clients in real-time, preserving the last 50 messages.
@@ -67,6 +70,9 @@ go build -ldflags "-s -w" -o rmte
 The relay server acts as the central broker, routing WebSocket connections and serving the embedded Web UI.
 ```bash
 ./rmte serve --port=8080
+
+# Or, to run BOTH the relay server and a host session in a single process:
+./rmte serve --port=8080 --pass="supersecret123" --buffer=5
 ```
 
 ### 2. Share Your Workspace (Host)
@@ -76,10 +82,13 @@ Run this on the machine you want to expose. It starts shell terminals and expose
 ```
 * `--buffer` (Optional): Maximum buffer size in MB (applies to terminal ring buffer and max file sizes). Default is `1` MB.
 
-The host will output a unique Session ID:
+The host will output a unique Session ID and a shareable link:
 ```text
 Session ID: a1b2c3d4
-Share this ID with viewers to join.
+Buffer limit: 5 MB
+
+Shareable link (password still required):
+  http://localhost:8080/?server=ws://localhost:8080/ws&session=a1b2c3d4
 ```
 
 ### 3. Join via CLI Client (Viewer)
@@ -99,6 +108,6 @@ Open your browser and navigate to:
 ```text
 http://localhost:8080/
 ```
-1. Enter the Server URL, E2EE **Password** (`supersecret123`), **Session ID** (`a1b2c3d4`), and your Nickname.
+1. Open the shareable link provided by the host, or manually enter the Server URL and Session ID. Then type the E2EE **Password** (e.g. `supersecret123`) and an optional Nickname.
 2. Click **Connect**.
 3. Toggle the folder icon `📁` in the tab bar to access the workspace editor. Double-click the breadcrumb to input any absolute path directly.
